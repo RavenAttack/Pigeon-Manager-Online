@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pigeon Manager 🚗🐦</title>
+  <style>
+    :root {
+      --bg-light: #f5f5f5;
+      --bg-dark: #1e1e1e;
+      --text-light: #333;
+      --text-dark: #eee;
+      --card-light: #fff;
+      --card-dark: #2c2c2c;
+    }
+    body {
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+      padding: 0;
+      background: var(--bg-light);
+      color: var(--text-light);
+      transition: background 0.5s, color 0.5s;
+    }
+    .container {
+      padding: 1rem;
+    }
+    .date-weather {
+      padding: 1rem;
+      text-align: center;
+      background-color: var(--card-light);
+      border-bottom: 1px solid #ccc;
+    }
+    .date-weather #currentDate {
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
+    .date-weather #weatherInfo {
+      font-size: 1rem;
+      margin-top: 0.5rem;
+    }
+    .pigeon-card {
+      background: var(--card-light);
+      padding: 1rem;
+      margin: 1rem 0;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      transition: background 0.5s;
+    }
+    .pigeon-card input[type="text"] {
+      width: 100%;
+      border: none;
+      background: transparent;
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: inherit;
+    }
+    .pigeon-card label {
+      font-weight: bold;
+      display: block;
+    }
+    .actions {
+      padding: 1rem;
+      text-align: center;
+    }
+    .actions button {
+      margin: 0.5rem;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 10px;
+      background: #4caf50;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .badge {
+      background: gold;
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-weight: bold;
+      display: inline-block;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="date-weather">
+    <div id="currentDate">Loading date...</div>
+    <div id="weatherInfo">Loading weather...</div>
+  </div>
+
+  <div class="container" id="pigeonList">
+    <!-- Pigeons will appear here -->
+  </div>
+
+  <div class="actions">
+    <button onclick="addPigeon()">Add Pigeon</button>
+    <button onclick="toggleTheme()">Toggle Dark/Light Mode</button>
+    <div id="badgeArea"></div>
+  </div>
+
+  <script>
+    let pigeons = JSON.parse(localStorage.getItem('pigeons')) || [];
+    const pigeonList = document.getElementById('pigeonList');
+
+    function savePigeons() {
+      localStorage.setItem('pigeons', JSON.stringify(pigeons));
+    }
+    
+// Reset 'ateToday' every new day
+const lastResetDate = localStorage.getItem('lastResetDate');
+const todayDate = new Date().toDateString();
+
+if (lastResetDate !== todayDate) {
+  pigeons.forEach(pigeon => {
+    pigeon.ateToday = false;
+  });
+  localStorage.setItem('lastResetDate', todayDate);
+  savePigeons();
+}
+
+    function renderPigeons() {
+      pigeonList.innerHTML = '';
+      pigeons.forEach((pigeon, index) => {
+        const card = document.createElement('div');
+        card.className = 'pigeon-card';
+        card.innerHTML = `
+          <div>
+            <label>Pigeon Name</label>
+            <input type="text" id="name-${index}" value="${pigeon.name}" onblur="updateField(${index}, 'name')">
+          </div>
+          <div>
+            <label>Ate Today</label>
+            <input type="checkbox" id="ateToday-${index}" ${pigeon.ateToday ? 'checked' : ''} onchange="updateField(${index}, 'ateToday')">
+          </div>
+          <div>
+            <label>Vaccination</label>
+            <input type="text" id="vaccination-${index}" value="${pigeon.vaccination}" onblur="updateField(${index}, 'vaccination')">
+          </div>
+          <div class="actions">
+            <button onclick="removePigeon(${index})">Remove</button>
+          </div>
+        `;
+        pigeonList.appendChild(card);
+      });
+      checkBadge();
+    }
+
+    function addPigeon() {
+      pigeons.push({ name: 'New Pigeon', ateToday: false, vaccination: 'None' });
+      savePigeons();
+      renderPigeons();
+    }
+
+    function updateField(index, field) {
+      const input = document.getElementById(`${field}-${index}`);
+      if (!input) return;
+
+      if (input.type === 'checkbox') {
+        pigeons[index][field] = input.checked;
+      } else {
+        pigeons[index][field] = input.value;
+      }
+      savePigeons();
+      checkBadge();
+    }
+
+    function removePigeon(index) {
+      pigeons.splice(index, 1);
+      savePigeons();
+      renderPigeons();
+    }
+
+    function checkBadge() {
+      const badgeArea = document.getElementById('badgeArea');
+      const allAte = pigeons.length > 0 && pigeons.every(p => p.ateToday);
+      badgeArea.innerHTML = allAte ? '<div class="badge">🏅 All Pigeons Fed!</div>' : '';
+    }
+
+    function toggleTheme() {
+      const currentBg = getComputedStyle(document.body).backgroundColor;
+      if (currentBg.includes('245, 245, 245')) { // Light mode
+        document.body.style.background = 'var(--bg-dark)';
+        document.body.style.color = 'var(--text-dark)';
+        document.querySelectorAll('.pigeon-card').forEach(card => {
+          card.style.background = 'var(--card-dark)';
+        });
+        document.querySelector('.date-weather').style.background = 'var(--card-dark)';
+      } else { // Dark mode
+        document.body.style.background = 'var(--bg-light)';
+        document.body.style.color = 'var(--text-light)';
+        document.querySelectorAll('.pigeon-card').forEach(card => {
+          card.style.background = 'var(--card-light)';
+        });
+        document.querySelector('.date-weather').style.background = 'var(--card-light)';
+      }
+    }
+
+    // Display Date
+    function displayCurrentDate() {
+      const currentDate = new Date();
+      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      document.getElementById('currentDate').textContent = currentDate.toLocaleDateString('en-AU', options);
+    }
+
+    // Fetch Weather
+    async function fetchWeather() {
+      const apiKey = '56b13e7a40f761049e28dba06fa395b9'; // <== PUT YOUR OpenWeatherMap API KEY HERE
+      const city = 'St Helena,AU';
+      const apiUrl = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&units=metric&appid=${apiKey}`;
+
+      try {
+        const response = await fetch(apiUrl);
+        if (!response.ok) throw new Error('Weather data not available');
+        const data = await response.json();
+        const temperature = data.main.temp;
+        const humidity = data.main.humidity;
+        const description = data.weather[0].description;
+        document.getElementById('weatherInfo').textContent = 
+          `🌡️ ${temperature.toFixed(1)}°C | 💧 ${humidity}% | 🌥️ ${description}`;
+      } catch (error) {
+        document.getElementById('weatherInfo').textContent = 'Unable to load weather data.';
+      }
+    }
+
+    // Initialize
+    renderPigeons();
+    displayCurrentDate();
+    fetchWeather();
+    setInterval(fetchWeather, 60 * 60 * 1000); // Update weather every 1 hour
+    setInterval(displayCurrentDate, 60 * 1000); // Update date display every minute just in case
+  </script>
+
+</body>
+</html>
